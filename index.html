@@ -1,0 +1,111 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+  <html xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+      <title>Comet demo</title>
+ 
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+      <script type="text/javascript" src="prototype.js"></script>
+      <style>
+        #content {
+          border-bottom: 2px solid #CCCCCC;
+          bottom: 25px;
+          position: absolute;
+          width: 95%;
+          margin:0;
+          padding:0;
+        }
+        #content #window {
+          overflow-y: scroll;
+        }
+        form {
+          position: absolute;
+          bottom: 0;
+        }
+        form input[type=text] {
+          width: 500px;
+        }
+      </style>
+    </head>
+    <body>
+
+  <div id="content">
+    <div id="window"></div>
+  </div>
+ 
+    <form action="" method="get" onsubmit="comet.doRequest($('word').value, $('username').value);$('word').value='';$('word').focus(); return false;">
+      <input type="text" name="word" id="word" value="" />
+      <input type="hidden" name="username" id="username" value="" />
+      <input type="submit" name="submit" value="Send" />
+    </form>
+ 
+  <script type="text/javascript">
+  var Comet = Class.create();
+  Comet.prototype = {
+ 
+    timestamp: (new Date().getTime()*1000),
+    url: './backend.php',
+    noerror: true,
+ 
+    initialize: function() { 
+      var user = "User"+Math.floor((Math.random()*100)+1);
+      $('username').value = user;
+      this.doRequest(user+" has joined.", "System");
+    },
+ 
+    connect: function()
+    {
+      this.ajax = new Ajax.Request(this.url, {
+        method: 'get',
+        parameters: { 'time' : this.timestamp },
+        onSuccess: function(transport) {
+          // handle the server response
+          var response = transport.responseText.evalJSON();
+          console.log(response);
+          if(response['timeout'] == "true") {
+            this.comet.noerror = true;
+          } else {
+            this.comet.timestamp = response['timestamp'];
+            this.comet.handleResponse(response);
+            this.comet.noerror = true;
+          }
+        },
+        onComplete: function(transport) {
+          // send a new ajax request when this request is finished
+          if (!this.comet.noerror) {
+            setTimeout(function(){ comet.connect() }, 5000); 
+          } else {
+            this.comet.connect();
+            this.comet.noerror = false;
+          }
+        }
+      });
+      this.ajax.comet = this;
+    },
+ 
+    disconnect: function()
+    {
+    },
+ 
+    handleResponse: function(response)
+    {
+      response.messages.each(function(single) {
+        $('window').innerHTML += '<div>[' + single.time_sent + '] '+ single.user + ': ' + single.message + '</div>'
+      });
+    },
+ 
+    doRequest: function(request, user)
+    {
+      if(request != '') {
+        new Ajax.Request(this.url, {
+          method: 'get',
+          parameters: { 'msg' : request, 'user' : user, 'time' : new Date().getTime()*1000 }
+        });
+      }
+    }
+  }
+  var comet = new Comet();
+  comet.connect();
+  </script>
+ 
+  </body>
+  </html>
